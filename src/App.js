@@ -191,7 +191,7 @@ LIMIT 50`);
     const authUrl =
       `${baseUrl}/services/oauth2/authorize?` +
       `response_type=token&` +
-      `client_id=3MVG9dAEux2v1sLvQN9CIido5s2_uQCIGhhK8n9DyL.yAOQ5vWN5qsK5UXs3E8USdnzDnLWeuA6C.HygME5UZ` +
+      `client_id=3MVG9dAEux2v1sLvQN9CIido5s0PEjyH0kZwllRYPkYq07rztYQbg9b41Aq6vL1pvyUeHK3WOXE9bdtUJmubz` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
       `scope=api%20refresh_token&` +
       `state=oauth&` +
