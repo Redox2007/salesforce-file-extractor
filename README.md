@@ -14,7 +14,7 @@ A powerful web application for extracting files from Salesforce using custom SOQ
 
 ## 🌐 Live Demo
 
-**GitHub Pages:** https://[YOUR-USERNAME].github.io/salesforce-file-extractor/
+**GitHub Pages:** https://Redox2007.github.io/salesforce-file-extractor/
 
 ## 🛠️ Local Development
 
@@ -27,7 +27,7 @@ A powerful web application for extracting files from Salesforce using custom SOQ
 
 1. Clone the repository:
    \`\`\`bash
-   git clone https://github.com/[YOUR-USERNAME]/salesforce-file-extractor.git
+   git clone https://github.com/Redox2007/salesforce-file-extractor.git
    cd salesforce-file-extractor
    \`\`\`
 
@@ -64,13 +64,13 @@ Install our 2GP managed package that includes Connected App and CORS settings:
 
    - Setup → App Manager → New Connected App
    - Enable OAuth Settings
-   - Add callback URLs: https://[YOUR-USERNAME].github.io/salesforce-file-extractor/
+   - Add callback URLs: https://Redox2007.github.io/salesforce-file-extractor/
    - Scopes: API, Refresh Token
 
 2. **Configure CORS:**
 
    - Setup → CORS → New
-   - Origin URL: https://[YOUR-USERNAME].github.io
+   - Origin URL: https://Redox2007.github.io
 
 3. **Update Consumer Key:**
    - Copy Consumer Key from Connected App
@@ -100,7 +100,7 @@ WHERE CreatedDate = LAST_N_DAYS:7 LIMIT 50
 
 -- Large files
 SELECT Id, Title FROM ContentDocument
-WHERE ContentSize > 1000000 ORDER BY ContentSize DESC
+WHERE ContentSize > 50000 ORDER BY ContentSize DESC
 
 -- Attachments by object type
 SELECT Id, Name, ContentType FROM Attachment
@@ -121,8 +121,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- **Issues**: https://github.com/[YOUR-USERNAME]/salesforce-file-extractor/issues
-- **Discussions**: https://github.com/[YOUR-USERNAME]/salesforce-file-extractor/discussions
+- **Issues**: https://github.com/Redox2007/salesforce-file-extractor/issues
+- **Discussions**: https://github.com/Redox2007/salesforce-file-extractor/discussions
 - **Documentation**: See README and code comments
 
 ## 🙏 Acknowledgments
