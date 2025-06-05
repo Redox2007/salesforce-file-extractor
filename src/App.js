@@ -177,27 +177,21 @@ LIMIT 50`);
       ? "https://login.salesforce.com"
       : "https://test.salesforce.com";
 
-    // Smart redirect URI detection
-    let redirectUri;
-    if (
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1"
-    ) {
-      redirectUri = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
-    } else {
-      redirectUri = window.location.href.split("?")[0].split("#")[0];
-    }
+    // Fixed redirect URI to always use the GitHub Pages URL
+    const redirectUri =
+      "https://redox2007.github.io/salesforce-file-extractor/";
 
+    // FIXED: Added missing & separator between client_id and redirect_uri and proper scope encoding
     const authUrl =
       `${baseUrl}/services/oauth2/authorize?` +
       `response_type=token&` +
-      `client_id=3MVG9dAEux2v1sLs2phMtumXVjrg_BN5TfF1KkvqpE.fnjFKuoairyUJzCrJpOKjtKqC62G80YUBgaoofvOh9` +
+      `client_id=3MVG9dAEux2v1sLs2phMtumXVjrg_BN5TfF1KkvqpE.fnjFKuoairyUJzCrJpOKjtKqC62G80YUBgaoofvOh9&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
-      `scope=api%20refresh_token&` +
-      `state=oauth&` +
-      `prompt=login`;
+      `scope=api&` +
+      `state=oauth`;
 
     console.log("Connecting with redirect URI:", redirectUri);
+    console.log("Full auth URL:", authUrl);
 
     if (usePopup) {
       // Popup method
