@@ -364,7 +364,19 @@ LIMIT 50`);
         );
       }
 
-      setFiles(allRecords);
+      // Normalize ContentDocumentLink records for display and download
+      const queryLowerForNorm = soqlQuery.toLowerCase();
+      const normalizedRecords = queryLowerForNorm.includes("from contentdocumentlink")
+        ? allRecords.map((r) => ({
+            ...r,
+            Id: r.ContentDocumentId,
+            Title: r.ContentDocument?.Title,
+            FileExtension: r.ContentDocument?.FileExtension,
+            FileType: r.ContentDocument?.FileType,
+          }))
+        : allRecords;
+
+      setFiles(normalizedRecords);
       setSelectedFiles(new Set());
 
       if (allRecords.length === 0) {
@@ -430,7 +442,18 @@ Solutions:
       const queryLower = soqlQuery.toLowerCase();
       let objectType = "";
 
-      if (queryLower.includes("from contentdocument")) {
+      if (queryLower.includes("from contentdocumentlink")) {
+        objectType = "ContentDocument";
+        console.log("ContentDocumentLink record:", JSON.stringify(file));
+        // Normalize ContentDocumentLink record to the flat shape the download path expects
+        file = {
+          ...file,
+          Id: file.ContentDocumentId,
+          Title: file.ContentDocument?.Title,
+          FileExtension: file.ContentDocument?.FileExtension,
+          FileType: file.ContentDocument?.FileType,
+        };
+      } else if (queryLower.includes("from contentdocument")) {
         objectType = "ContentDocument";
       } else if (queryLower.includes("from attachment")) {
         objectType = "Attachment";
