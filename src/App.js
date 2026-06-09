@@ -428,7 +428,7 @@ Solutions:
       // Determine object type from query or file structure
       const queryLower = soqlQuery.toLowerCase();
       let objectType = "";
-
+      console.log('Is it a contentdocumentlink-->'+queryLower.includes("from contentdocumentlink"));
       if (queryLower.includes("from contentdocumentlink")) {
         objectType = "ContentDocument";
         console.log("ContentDocumentLink record:", JSON.stringify(file));
