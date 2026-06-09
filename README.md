@@ -1,133 +1,161 @@
 # Salesforce File Extractor
+A powerful web-based tool for extracting, querying, and downloading files from Salesforce using SOQL queries. Built with React and designed for easy deployment via GitHub Pages.
+![Salesforce File Extractor Interface](https://i.imgur.com/Kg3KeHX.png)
+## 🚀 Quick Start
+### Step 1: Install the Managed Package
+**Production/Developer Orgs:**
+```
+https://login.salesforce.com/packaging/installPackage.apexp?p0=04tgL0000002Xcd
+```
+**Sandbox Orgs:**
+```
+https://test.salesforce.com/packaging/installPackage.apexp?p0=04tgL0000002Xcd
+```
+### Step 2: Access the Application
+After installing the package, visit the web application:
+```
+https://redox2007.github.io/salesforce-file-extractor/
+```
+## 📋 Prerequisites
+- Salesforce org with the managed package installed
+- System Administrator or equivalent permissions
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+## 🛠️ Configuration
+### Required Setup
+1. **Install the AppExchange Package First**
+   - Use the installation links above to install the managed package in your Salesforce org
+   - The package includes a pre-configured Connected App with OAuth settings
+   - No manual Connected App setup is required
+2. **Access the Web Application**
+   - Navigate to: `https://redox2007.github.io/salesforce-file-extractor/`
+   - Click "Connect to Salesforce"
+   - Login with your Salesforce credentials
+   - Grant permissions when prompted
+## 📖 Usage
+### Basic Workflow
+1. **Connect to Salesforce**
+   - Click "Connect to Salesforce" button
+   - Login with your org credentials
+   - Application will authenticate automatically
+2. **Build SOQL Queries**
+   - Use the Query Builder for common file queries
+   - Or write custom SOQL queries in the text area
+   - Preview results before downloading
+3. **Download Files**
+   - Execute queries to see file metadata
+   - Select individual files for download
+   - Use bulk download for multiple files
+   - Files are organized in folders by date/type
+  
+## 🎯 Supported Object Types
+The app supports downloading files from the following Salesforce objects:
+| Object | Description |
+|--------|-------------|
+| `ContentDocument` | Files stored in Salesforce Files / Libraries |
+| `ContentDocumentLink` | Files linked to a specific record (e.g. a Case, Account, or custom object) |
+| `Attachment` | Classic attachments on standard/custom objects |
+| `Document` | Files in the Documents tab (classic) |
 
-A powerful web application for extracting files from Salesforce using custom SOQL queries with unlimited pagination and bulk download capabilities.
+### Sample Queries
+**All Files (Limited):**
+```sql
+SELECT Id, Title, FileExtension, ContentSize, CreatedDate 
+FROM ContentDocument 
+LIMIT 50
+```
+**Files by Type:**
+```sql
+SELECT Id, Title, FileExtension, ContentSize, CreatedDate 
+FROM ContentDocument 
+WHERE FileExtension = 'pdf'
+LIMIT 100
+```
+**Files by Date Range:**
+```sql
+SELECT Id, Title, FileExtension, ContentSize, CreatedDate 
+FROM ContentDocument 
+WHERE CreatedDate >= 2024-01-01T00:00:00Z 
+AND CreatedDate <= 2024-12-31T23:59:59Z
+LIMIT 200
+```
+**Large Files:**
+```sql
+SELECT Id, Title, FileExtension, ContentSize, CreatedDate 
+FROM ContentDocument 
+WHERE ContentSize > 1000000
+ORDER BY ContentSize DESC
+LIMIT 50
+```
+**Files Linked to a Specific Record (ContentDocumentLink):**
+```sql
+SELECT ContentDocumentId, ContentDocument.Title, ContentDocument.FileType,
+       ContentDocument.FileExtension, ContentDocument.CreatedDate
+FROM ContentDocumentLink
+WHERE LinkedEntityId = '0YA4N000000CfV1WAK'
+AND ContentDocument.FileType != 'snote'
+```
+> **Note:** `ContentDocumentLink` queries must select `ContentDocumentId` and any `ContentDocument.*` fields you need (Title, FileExtension, FileType). Salesforce does not support subqueries on `ContentDocumentLink`, so use the `LinkedEntityId` filter directly in the `WHERE` clause.
 
-## 🚀 Features
-
-- **Unlimited SOQL Queries**: No 2000 record limits with automatic pagination
-- **Massive File Downloads**: Support for 500k+ files with smart batching
-- **OAuth2 Authentication**: Secure connection to Salesforce orgs
-- **Universal Compatibility**: Works with Production, Sandbox, and Developer orgs
-- **Smart Folder Organization**: Direct downloads to selected folders
-- **Real-time Progress Tracking**: Visual indicators and time estimates
-- **CORS Proxy Support**: Fallback for restrictive environments
-
-## 🌐 Live Demo
-
-**GitHub Pages:** https://Redox2007.github.io/salesforce-file-extractor/
-
-## 🛠️ Local Development
-
-### Prerequisites
-
-- Node.js 16+ and npm
-- Salesforce org with appropriate permissions
-
-### Setup
-
-1. Clone the repository:
-   \`\`\`bash
-   git clone https://github.com/Redox2007/salesforce-file-extractor.git
-   cd salesforce-file-extractor
-   \`\`\`
-
-2. Install dependencies:
-   \`\`\`bash
-   npm install
-   \`\`\`
-
-3. Start development server:
-   \`\`\`bash
-   npm start
-   \`\`\`
-
-4. Open http://localhost:3000
-
-### Build for Production
-
-\`\`\`bash
-npm run build
-\`\`\`
-
-## 📦 Salesforce Setup
-
-### Option 1: Use Managed Package (Recommended)
-
-Install our 2GP managed package that includes Connected App and CORS settings:
-
-- **Package ID:** [YOUR-PACKAGE-ID]
-- **Installation URL:** [YOUR-INSTALLATION-URL]
-
-### Option 2: Manual Setup
-
-1. **Create Connected App:**
-
-   - Setup → App Manager → New Connected App
-   - Enable OAuth Settings
-   - Add callback URLs: https://Redox2007.github.io/salesforce-file-extractor/
-   - Scopes: API, Refresh Token
-
-2. **Configure CORS:**
-
-   - Setup → CORS → New
-   - Origin URL: https://Redox2007.github.io
-
-3. **Update Consumer Key:**
-   - Copy Consumer Key from Connected App
-   - Update in the File Extractor configuration
-
-## 🔧 Configuration
-
-The app uses a configurable Consumer Key approach. After deployment:
-
-1. Install the Salesforce package or set up Connected App manually
-2. Copy the Consumer Key from Setup → App Manager → [Connected App] → View
-3. Enter the Consumer Key in the app's configuration section
-
-## 📋 Usage
-
-1. **Connect**: Enter Consumer Key and login to Salesforce
-2. **Query**: Write SOQL to find files (automatic pagination handles large results)
-3. **Select**: Choose files individually or select all
-4. **Download**: Individual downloads or bulk processing with progress tracking
-
-## 🎯 Example SOQL Queries
-
-\`\`\`sql
--- Recent files
-SELECT Id, Title, FileExtension, ContentSize FROM ContentDocument
-WHERE CreatedDate = LAST_N_DAYS:7 LIMIT 50
-
--- Large files
-SELECT Id, Title FROM ContentDocument
-WHERE ContentSize > 50000 ORDER BY ContentSize DESC
-
--- Attachments by object type
-SELECT Id, Name, ContentType FROM Attachment
-WHERE Parent.Type = 'Account' LIMIT 100
-\`\`\`
-
+### Advanced Features
+- **Progress Tracking**: Real-time progress bars for bulk operations
+- **CORS Proxy Support**: Automatic fallback for API access
+- **Smart Folder Organization**: Files organized by date and type
+- **Bulk Download**: Download multiple files with progress tracking
+- **Query History**: Save and reuse common queries
+- **File Filtering**: Filter results by size, type, or date
+## 🔧 Troubleshooting
+### Common Issues
+**"Cannot connect to Salesforce"**
+- Ensure the managed package is installed
+- Check that you're using the correct org URL (production vs sandbox)
+- Verify your user has appropriate permissions
+**"CORS Error"**
+- Enable the CORS proxy in the application settings
+- Or configure CORS in your Salesforce org (Setup → CORS)
+**"No files found"**
+- Check your SOQL query syntax
+- Verify you have access to ContentDocument object
+- Ensure there are files matching your query criteria
+**"Download failed"**
+- Check your network connection
+- Verify file permissions in Salesforce
+- Try downloading smaller batches
+### Support
+For issues related to:
+- **Package Installation**: Contact Salesforce Support
+- **Application Usage**: Create an issue on the GitHub repository
+- **Feature Requests**: Submit a pull request or feature request
+## 🔒 Security & Permissions
+### Required Salesforce Permissions
+- Read access to ContentDocument object
+- Read access to ContentVersion object  
+- API access enabled
+- OAuth permissions for the Connected App
+### Data Privacy
+- No data is stored by the web application
+- All authentication uses OAuth 2.0 standard
+- Files are downloaded directly from Salesforce to your browser
+- No third-party data collection
+## 📱 Browser Compatibility
+- ✅ Chrome 90+
+- ✅ Firefox 88+
+- ✅ Safari 14+
+- ✅ Edge 90+
+- ✅ Mobile browsers (iOS Safari, Chrome Mobile)
+## 🆕 What's New
+### Latest Version Features
+- Simplified installation with managed package
+- Automatic OAuth configuration
+- Enhanced CORS proxy support
+- Improved bulk download performance
+- Better error handling and user feedback
 ## 🤝 Contributing
-
 1. Fork the repository
-2. Create feature branch: \`git checkout -b feature/amazing-feature\`
-3. Commit changes: \`git commit -m 'Add amazing feature'\`
-4. Push to branch: \`git push origin feature/amazing-feature\`
-5. Open Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-- **Issues**: https://github.com/Redox2007/salesforce-file-extractor/issues
-- **Discussions**: https://github.com/Redox2007/salesforce-file-extractor/discussions
-- **Documentation**: See README and code comments
-
-## 🙏 Acknowledgments
-
-- Built with React and modern web technologies
-- Salesforce REST API integration
-- Lucide React icons
-- Community feedback and contributions
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+## 📞 Support
+- **GitHub Issues**: For bug reports and feature requests
+- **Documentation**: Check this README for common questions
+- **Community**: Join discussions in the Issues section
