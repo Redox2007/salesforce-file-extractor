@@ -1,5 +1,6 @@
 # Salesforce File Extractor
 A powerful web-based tool for extracting, querying, and downloading files from Salesforce using SOQL queries. Built with React and designed for easy deployment via GitHub Pages.
+
 ![Salesforce File Extractor Interface](https://i.imgur.com/Kg3KeHX.png)
 ## 🚀 Quick Start
 ### Step 1: Install the Managed Package
