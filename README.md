@@ -68,6 +68,17 @@ https://redox2007.github.io/salesforce-file-extractor/
    - Select individual files for download
    - Use bulk download for multiple files
    - Files are organized in folders by date/type
+  
+## 🎯 Supported Object Types
+
+The app supports downloading files from the following Salesforce objects:
+
+| Object | Description |
+|--------|-------------|
+| `ContentDocument` | Files stored in Salesforce Files / Libraries |
+| `ContentDocumentLink` | Files linked to a specific record (e.g. a Case, Account, or custom object) |
+| `Attachment` | Classic attachments on standard/custom objects |
+| `Document` | Files in the Documents tab (classic) |
 
 ### Sample Queries
 
