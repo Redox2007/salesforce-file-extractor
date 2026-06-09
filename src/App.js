@@ -426,10 +426,22 @@ Solutions:
       let fileName = "";
 
       // Determine object type from query or file structure
+      console.log("soqlQuery at download time:", soqlQuery);
       const queryLower = soqlQuery.toLowerCase();
       let objectType = "";
 
-      if (queryLower.includes("from contentdocument")) {
+      if (queryLower.includes("from contentdocumentlink")) {
+        objectType = "ContentDocument";
+        console.log("ContentDocumentLink record:", JSON.stringify(file));
+        // Normalize ContentDocumentLink record to the flat shape the download path expects
+        file = {
+          ...file,
+          Id: file.ContentDocumentId,
+          Title: file.ContentDocument?.Title,
+          FileExtension: file.ContentDocument?.FileExtension,
+          FileType: file.ContentDocument?.FileType,
+        };
+      } else if (queryLower.includes("from contentdocument")) {
         objectType = "ContentDocument";
       } else if (queryLower.includes("from attachment")) {
         objectType = "Attachment";
