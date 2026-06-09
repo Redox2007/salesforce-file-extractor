@@ -431,6 +431,7 @@ Solutions:
 
       if (queryLower.includes("from contentdocumentlink")) {
         objectType = "ContentDocument";
+        console.log("ContentDocumentLink record:", JSON.stringify(file));
         // Normalize ContentDocumentLink record to the flat shape the download path expects
         file = {
           ...file,
