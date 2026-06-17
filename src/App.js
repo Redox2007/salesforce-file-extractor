@@ -177,11 +177,9 @@ LIMIT 50`);
       ? "https://login.salesforce.com"
       : "https://test.salesforce.com";
 
-    // Fixed redirect URI to always use the GitHub Pages URL
     const redirectUri =
       "https://redox2007.github.io/salesforce-file-extractor/";
 
-    // FIXED: Added missing & separator between client_id and redirect_uri and proper scope encoding
     const authUrl =
       `${baseUrl}/services/oauth2/authorize?` +
       `response_type=token&` +
@@ -194,7 +192,6 @@ LIMIT 50`);
     console.log("Full auth URL:", authUrl);
 
     if (usePopup) {
-      // Popup method
       const popup = window.open(
         authUrl,
         "salesforce_auth",
@@ -202,7 +199,6 @@ LIMIT 50`);
       );
       setPopupWindow(popup);
 
-      // Monitor popup
       const checkClosed = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkClosed);
@@ -210,7 +206,6 @@ LIMIT 50`);
         }
       }, 1000);
     } else {
-      // Direct redirect method
       localStorage.setItem("sf_auth_attempt", "true");
       localStorage.setItem("sf_instance_type", instanceType);
       window.location.href = authUrl;
@@ -228,7 +223,6 @@ LIMIT 50`);
       await fetchUserInfo(token, instUrl);
       setConnectionStatus("connected");
 
-      // Clean up URL and localStorage
       window.history.replaceState({}, document.title, window.location.pathname);
       localStorage.removeItem("sf_auth_attempt");
       localStorage.removeItem("sf_instance_type");
@@ -279,7 +273,7 @@ LIMIT 50`);
     setError("");
     setSoqlError("");
     setFiles([]);
-    setFileDownloadStatus(new Map()); // Reset download status
+    setFileDownloadStatus(new Map());
 
     console.log("Executing SOQL query with pagination:", soqlQuery);
     console.log("Using CORS proxy:", useProxy);
@@ -290,12 +284,11 @@ LIMIT 50`);
         soqlQuery
       )}`;
       let pageCount = 0;
-      const maxPages = 1000; // Safety limit to prevent infinite loops
+      const maxPages = 1000;
 
       while (queryUrl && pageCount < maxPages) {
         pageCount++;
 
-        // Update loading message with progress
         if (pageCount > 1) {
           setSoqlError(
             `📥 Fetching records... Page ${pageCount} (${allRecords.length.toLocaleString()} records so far)`
@@ -341,16 +334,13 @@ LIMIT 50`);
         const data = await response.json();
         const pageRecords = data.records || [];
 
-        // Add this page's records to the total
         allRecords = [...allRecords, ...pageRecords];
 
-        // Check if there are more pages
         if (data.nextRecordsUrl) {
           queryUrl = `${instanceUrl}${data.nextRecordsUrl}`;
-          // Add a small delay to avoid overwhelming the API
           await new Promise((resolve) => setTimeout(resolve, 100));
         } else {
-          queryUrl = null; // No more pages
+          queryUrl = null;
         }
 
         console.log(
@@ -364,17 +354,30 @@ LIMIT 50`);
         );
       }
 
-      // Normalize ContentDocumentLink records for display and download
+      // Normalize ContentDocumentLink records — keep the raw ContentDocument
+      // nested object intact so downloadFile can always fall back to it.
       const queryLowerForNorm = soqlQuery.toLowerCase();
-      const normalizedRecords = queryLowerForNorm.includes("from contentdocumentlink")
-        ? allRecords.map((r) => ({
-            ...r,
-            Id: r.ContentDocumentId,
-            Title: r.ContentDocument?.Title,
-            FileExtension: r.ContentDocument?.FileExtension,
-            FileType: r.ContentDocument?.FileType,
-          }))
+      const isFromCDL = queryLowerForNorm.includes("from contentdocumentlink");
+
+      const normalizedRecords = isFromCDL
+        ? allRecords.map((r) => {
+            const cdId = r.ContentDocument?.Id || r.ContentDocumentId;
+            console.log("CDL normalization — raw Id:", r.Id, "→ resolved ContentDocumentId:", cdId);
+            return {
+              ...r,                              // keep ContentDocument nested object intact
+              Id: cdId,                          // override top-level Id with the real doc Id
+              Title: r.ContentDocument?.Title || r.Title,
+              FileExtension: r.ContentDocument?.FileExtension || r.FileExtension,
+              FileType: r.ContentDocument?.FileType || r.FileType,
+              ContentSize: r.ContentDocument?.ContentSize || r.ContentSize,
+              LastModifiedDate: r.ContentDocument?.LastModifiedDate || r.LastModifiedDate,
+              CreatedBy: r.ContentDocument?.CreatedBy || r.CreatedBy,
+            };
+          })
         : allRecords;
+
+      console.log("Normalized records count:", normalizedRecords.length);
+      console.log("First normalized Id:", normalizedRecords[0]?.Id);
 
       setFiles(normalizedRecords);
       setSelectedFiles(new Set());
@@ -437,22 +440,12 @@ Solutions:
       let downloadUrl = "";
       let fileName = "";
 
-      // Determine object type from query or file structure
       console.log("soqlQuery at download time:", soqlQuery);
       const queryLower = soqlQuery.toLowerCase();
       let objectType = "";
 
       if (queryLower.includes("from contentdocumentlink")) {
         objectType = "ContentDocument";
-        console.log("ContentDocumentLink record:", JSON.stringify(file));
-        // Normalize ContentDocumentLink record to the flat shape the download path expects
-        file = {
-          ...file,
-          Id: file.ContentDocumentId,
-          Title: file.ContentDocument?.Title,
-          FileExtension: file.ContentDocument?.FileExtension,
-          FileType: file.ContentDocument?.FileType,
-        };
       } else if (queryLower.includes("from contentdocument")) {
         objectType = "ContentDocument";
       } else if (queryLower.includes("from attachment")) {
@@ -460,7 +453,6 @@ Solutions:
       } else if (queryLower.includes("from document")) {
         objectType = "Document";
       } else {
-        // Try to detect from FROM clause
         const fromMatch = queryLower.match(/from\s+(\w+)/);
         if (fromMatch) {
           objectType = fromMatch[1];
@@ -470,8 +462,29 @@ Solutions:
       console.log("Detected object type:", objectType);
 
       if (objectType === "ContentDocument") {
+        // ── FIX: triple-fallback so we always get a real ID ──────────────────
+        // 1. file.ContentDocument?.Id  → nested object still present on the record
+        // 2. file.ContentDocumentId    → direct junction field (CDL queries)
+        // 3. file.Id                   → already normalised top-level Id
+        const contentDocId =
+          file.ContentDocument?.Id ||
+          file.ContentDocumentId ||
+          file.Id;
+
+        console.log("Resolved ContentDocument ID:", contentDocId);
+
+        if (!contentDocId || contentDocId === "undefined") {
+          throw new Error(
+            "Could not resolve a valid ContentDocument ID for this record. " +
+            "Make sure your query selects ContentDocument.Id."
+          );
+        }
+
+        const versionQuery = `SELECT VersionData FROM ContentVersion WHERE ContentDocumentId='${contentDocId}' AND IsLatest=true LIMIT 1`;
+        console.log("Version Query:", versionQuery);
+
         const versionResponse = await safeFetch(
-          `${instanceUrl}/services/data/v58.0/query/?q=SELECT VersionData FROM ContentVersion WHERE ContentDocumentId='${file.Id}' AND IsLatest=true`,
+          `${instanceUrl}/services/data/v58.0/query/?q=${encodeURIComponent(versionQuery)}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -480,18 +493,26 @@ Solutions:
           }
         );
 
+        console.log("Version Response Status:", versionResponse.status);
+
         if (!versionResponse.ok) {
+          const errorText = await versionResponse.text();
+          console.error("Version Response Error:", errorText);
           throw new Error(
-            `Failed to get version data: ${versionResponse.status}`
+            `Failed to get version data: ${versionResponse.status} - ${errorText}`
           );
         }
 
         const versionData = await versionResponse.json();
+        console.log("Version Data:", JSON.stringify(versionData));
+
         if (versionData.records && versionData.records.length > 0) {
           downloadUrl = `${instanceUrl}${versionData.records[0].VersionData}`;
           fileName = `${file.Title || "file"}${
             file.FileExtension ? "." + file.FileExtension : ""
           }`;
+          console.log("Download URL:", downloadUrl);
+          console.log("File Name:", fileName);
         } else {
           throw new Error("No version data found for this ContentDocument");
         }
@@ -502,7 +523,6 @@ Solutions:
         downloadUrl = `${instanceUrl}/services/data/v58.0/sobjects/Document/${file.Id}/Body`;
         fileName = file.Name || `document_${file.Id}`;
       } else {
-        // Generic approach for unknown objects
         const possibleUrls = [
           `${instanceUrl}/services/data/v58.0/sobjects/${objectType}/${file.Id}/Body`,
           `${instanceUrl}/services/data/v58.0/sobjects/${objectType}/${file.Id}/VersionData`,
@@ -549,7 +569,6 @@ Solutions:
         throw new Error("Downloaded file is empty");
       }
 
-      // Use folder API if available and folder selected
       if (selectedFolder && folderSupported) {
         try {
           const fileHandle = await selectedFolder.getFileHandle(fileName, {
@@ -609,7 +628,6 @@ Solutions:
       return;
     }
 
-    // Show confirmation for large downloads
     if (filesToDownload.length > 10000) {
       const confirmLarge = window.confirm(
         `⚠️ You're about to download ${filesToDownload.length.toLocaleString()} files. This will take a very long time and may consume significant bandwidth and storage.\n\nThis operation cannot be easily stopped once started. Are you sure you want to continue?`
@@ -620,18 +638,16 @@ Solutions:
     setDownloadProgress({ current: 0, total: filesToDownload.length });
     setError("");
 
-    // Adaptive batch sizing based on total files
     let DOWNLOAD_BATCH_SIZE = 3;
     if (filesToDownload.length > 50000) {
-      DOWNLOAD_BATCH_SIZE = 5; // Larger batches for massive downloads
+      DOWNLOAD_BATCH_SIZE = 5;
     } else if (filesToDownload.length > 10000) {
       DOWNLOAD_BATCH_SIZE = 4;
     }
 
-    // Adaptive delays based on total files
     let BATCH_DELAY = 500;
     if (filesToDownload.length > 50000) {
-      BATCH_DELAY = 1000; // Longer delays for massive downloads to avoid rate limits
+      BATCH_DELAY = 1000;
     } else if (filesToDownload.length > 10000) {
       BATCH_DELAY = 750;
     }
@@ -676,7 +692,6 @@ Solutions:
         })
       );
 
-      // Progress reporting every 100 batches for large downloads
       if (batchNumber % 100 === 0 || batchNumber === totalBatches) {
         const elapsedMinutes = (Date.now() - startTime) / 60000;
         const filesPerMinute = (successCount + errorCount) / elapsedMinutes;
@@ -691,7 +706,6 @@ Solutions:
         );
       }
 
-      // Add delay between batches (except for the last batch)
       if (i + DOWNLOAD_BATCH_SIZE < filesToDownload.length) {
         await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY));
       }
@@ -1054,7 +1068,6 @@ Solutions:
     },
   };
 
-  // Main application - direct launch without authentication screen
   return (
     <div style={styles.container}>
       <div style={styles.mainCard}>
@@ -1248,9 +1261,7 @@ Solutions:
                     <p>
                       <strong>✅ Universal Compatibility:</strong>
                     </p>
-                    <p>
-                      • Works with localhost, GitHub Pages, and custom domains
-                    </p>
+                    <p>• Works with localhost, GitHub Pages, and custom domains</p>
                     <p>• Smart redirect URI detection</p>
                     <p>• Popup fallback for restrictive environments</p>
                   </div>
@@ -1803,7 +1814,6 @@ Solutions:
                           </span>
                         )}
                       </div>
-                      {/* Enhanced Download Selected button with file count and warnings */}
                       {selectedFiles.size > 0 && (
                         <div
                           style={{
@@ -1914,7 +1924,6 @@ Solutions:
                           </div>
                         </div>
 
-                        {/* Download Status Icon */}
                         <div
                           style={{
                             display: "flex",
@@ -2020,20 +2029,11 @@ Solutions:
                   lineHeight: "1.6",
                 }}
               >
-                <li>
-                  Execute any SOQL query to find exactly the files you need
-                </li>
+                <li>Execute any SOQL query to find exactly the files you need</li>
                 <li>Real-time query validation and syntax checking</li>
-                <li>
-                  Automatic pagination to retrieve ALL records (no 2000 limit)
-                </li>
-                <li>
-                  Filter by date, size, creator, parent object, file type, etc.
-                </li>
-                <li>
-                  Works with ContentDocument, Attachment, Document, and custom
-                  objects
-                </li>
+                <li>Automatic pagination to retrieve ALL records (no 2000 limit)</li>
+                <li>Filter by date, size, creator, parent object, file type, etc.</li>
+                <li>Works with ContentDocument, Attachment, Document, and custom objects</li>
               </ul>
             </div>
 
@@ -2059,9 +2059,7 @@ Solutions:
                 }}
               >
                 <li>Choose custom download folders in modern browsers</li>
-                <li>
-                  Direct file writing to selected folders for organization
-                </li>
+                <li>Direct file writing to selected folders for organization</li>
                 <li>Automatic fallback to browser downloads folder</li>
                 <li>Perfect for organizing large file exports</li>
               </ul>
@@ -2092,9 +2090,7 @@ Solutions:
                 <li>Massive bulk download support for 500k+ files</li>
                 <li>Adaptive batch processing with smart rate limiting</li>
                 <li>Large download warnings and confirmation dialogs</li>
-                <li>
-                  Original file format preservation (PDF, DOCX, images, etc.)
-                </li>
+                <li>Original file format preservation (PDF, DOCX, images, etc.)</li>
                 <li>Visual download status indicators for each file</li>
                 <li>Detailed progress reporting and time estimates</li>
               </ul>
@@ -2131,19 +2127,16 @@ Solutions:
               }}
             >
               <div>
-                <strong>1. Connect:</strong> Login to your Salesforce org using
-                OAuth2
+                <strong>1. Connect:</strong> Login to your Salesforce org using OAuth2
               </div>
               <div>
                 <strong>2. Query:</strong> Write SOQL to find the files you want
               </div>
               <div>
-                <strong>3. Select:</strong> Choose files individually or select
-                all
+                <strong>3. Select:</strong> Choose files individually or select all
               </div>
               <div>
-                <strong>4. Download:</strong> Individual downloads or bulk
-                selected files with status tracking
+                <strong>4. Download:</strong> Individual downloads or bulk selected files with status tracking
               </div>
             </div>
           </div>
